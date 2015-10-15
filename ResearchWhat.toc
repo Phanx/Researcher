@@ -1,0 +1,14 @@
+## Interface: 60200
+
+## Title: ResearchWhat
+## Notes: Shows which glyphs you can learn from inscription research.
+
+## Author: Phanx
+## X-Email: addons@phanx.net
+## X-Copyright: Copyright (c) 2015 Phanx. All rights reserved.
+
+## LoadOnDemand: 1
+## LoadWith: Blizzard_TradeSkillUI
+
+Data.lua
+Core.lua
