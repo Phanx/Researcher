@@ -1,4 +1,7 @@
-ResearchWhat
+Researcher
 ===============
 
-Shows which glyphs you can learn from inscription research. May eventually be expanded to cover over research-type tradeskill abilities.
+Shows which recipes you can learn from research in the tradeskill window.
+
+Currently covers inscription and Northrend Alchemy Research.
+More data will be added in the future.

@@ -1,7 +1,7 @@
 ## Interface: 60200
 
-## Title: ResearchWhat
-## Notes: Shows which glyphs you can learn from inscription research.
+## Title: Researcher
+## Notes: Shows which recipes you can learn from research in the tradeskill window.
 
 ## Author: Phanx
 ## X-Email: addons@phanx.net
