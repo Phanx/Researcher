@@ -1,6 +1,6 @@
 --[[----------------------------------------------------------------------------
-	ResearchWhat
-	Shows which glyphs you can learn from inscription research.
+	Researcher
+	Shows which recipes you can learn from research.
 	Copyright (c) 2015 Phanx. All rights reserved.
 	See the accompanying LICENSE.txt file for more information.
 	https://github.com/Phanx/ResearchWhat
@@ -8,12 +8,26 @@
 	TODO:
 	- Use fallbacks[researchID] if data[researchID] is empty
 	- Sort displayed list of possible discoveries
+	  - Partly done - sorted by name. Maybe supersort by class?
 	- Hide or inset scrollbar on the tradeskill detail frame
 	- Icon on tradeskill list
 ------------------------------------------------------------------------------]]
 local ADDON, private = ...
-local data, fallbacks = private.data, private.fallbacks
+local data, fallbacks = private.GetData()
 local known = {}
+
+local function RemoveKnown(t)
+	for research, skills in pairs(t) do
+		for skill in pairs(skills) do
+			if known[skill] then
+				skills[skill] = nil
+			end
+		end
+		if not next(skills) then
+			research[skills] = nil
+		end
+	end
+end
 
 local addon = CreateFrame("Frame", ADDON)
 addon:RegisterEvent("ADDON_LOADED")
@@ -26,67 +40,48 @@ addon:SetScript("OnEvent", function(self, event, ...)
 		text:SetWidth(290)
 		self.discoveryText = text
 
+		local scrollBarMiddle = TradeSkillDetailScrollFrame.ScrollBar:CreateTexture(nil, "BACKGROUND")
+		scrollBarMiddle:SetTexture("Interface\\ClassTrainerFrame\\UI-ClassTrainer-ScrollBar")
+		scrollBarMiddle:SetPoint("TOPLEFT", TradeSkillDetailScrollFrameTop, "BOTTOMLEFT")
+		scrollBarMiddle:SetPoint("BOTTOMRIGHT", TradeSkillDetailScrollFrameBottom, "TOPRIGHT")
+		scrollBarMiddle:SetTexCoord(0, 0.46875, 0.2, 0.9609375)
+		
+		TradeSkillDetailScrollFrameTop:SetPoint("TOPLEFT", TradeSkillDetailScrollFrame, "TOPRIGHT", -3, 5)
+		TradeSkillDetailScrollFrameBottom:SetPoint("BOTTOMLEFT", TradeSkillDetailScrollFrame, "BOTTOMRIGHT", -3, -2)
+
 		self:UnregisterEvent("ADDON_LOADED")
 		self:RegisterEvent("TRADE_SKILL_UPDATE")
 	else
+		data, fallbacks = private.GetData()
 		for i = 1, GetNumTradeSkills() do
 			known[GetTradeSkillInfo(i)] = true
 		end
-
-		for researchID, teaches in pairs(data) do
-			local researchName = type(researchID) == "number" and GetSpellInfo(researchID)
-			if researchName then
-				data[researchName] = teaches
-				data[researchID] = nil
-			end
-			for skillID, class in pairs(teaches) do
-				local skillName = type(skillID) == "number" and GetSpellInfo(skillID)
-				if skillName and not known[skillName] then
-					teaches[skillName] = class and "|cff"..(CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class].colorStr or "|cffffffff"
-				end
-				if skillName or known[skillID] then
-					teaches[skillID] = nil
-				end
-			end
-		end
-
-		for masterID, others in pairs(fallbacks) do
-			local masterName = GetSpellInfo(masterID)
-			if masterName then
-				fallbacks[masterName] = others
-				fallbacks[masterID] = nil
-			end
-			for i = #others, 1, -1 do
-				local researchID = others[i]
-				local researchName = GetSpellInfo(researchID)
-				if researchName then
-					local done = true
-					for spellID, class in pairs(data[researchName]) do
-						if type(spellID) == "string" then
-							others[spellID] = class
-						else
-							done = false
-						end
-					end
-					if done then
-						tremove(others, i)
-					end
-				end
-			end
+		RemoveKnown(data)
+		RemoveKnown(fallbacks)
+		if TradeSkillFrame.selectedSkill then
+			TradeSkillFrame_SetSelection(TradeSkillFrame.selectedSkill)
 		end
 	end
 end)
 
 --------------------------------------------------------------------------------
 
+local sortedNames = {}
 hooksecurefunc("TradeSkillFrame_SetSelection", function(i)
 	local name = GetTradeSkillInfo(i)
 	local unlearned = data[name]
 	local empty = unlearned and not next(unlearned) and not IsTradeSkillLinked()
 	if unlearned and not empty then
+		wipe(sortedNames)
+		for skillName, coloredName in pairs(unlearned) do
+			if type(skillName) == "string" then
+				sortedNames[#sortedNames+1] = skillName
+			end
+		end
+		sort(sortedNames)
 		local text = "Remaining Discoveries:"
-		for skillName, color in pairs(unlearned) do
-			text = text .. "\n" .. color .. skillName .. "|r"
+		for i = 1, #sortedNames do
+			text = text .. "\n" .. unlearned[sortedNames[i]]
 		end
 		local numReagents = GetTradeSkillNumReagents(i)
 		addon.discoveryText:SetPoint("TOPLEFT", _G["TradeSkillReagent"..(numReagents - (1 - (numReagents % 2)))], "BOTTOMLEFT", 5, -10)
@@ -100,6 +95,7 @@ hooksecurefunc("TradeSkillFrame_SetSelection", function(i)
 		TradeSkillSkillCooldown:SetText(USED) -- "Already Known"
 		TradeSkillSkillCooldown:SetTextColor(RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
 	end
+	TradeSkillDetailScrollFrameScrollBar:SetValue(0)
 end)
 
 --------------------------------------------------------------------------------

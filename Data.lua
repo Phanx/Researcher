@@ -1,12 +1,12 @@
 --[[----------------------------------------------------------------------------
-	ResearchWhat
+	Researcher
 	Shows which recipes you can learn from research.
 	Copyright (c) 2015 Phanx. All rights reserved.
 	See the accompanying LICENSE.txt file for more information.
 	https://github.com/Phanx/ResearchWhat
 ------------------------------------------------------------------------------]]
 local _, private = ...
-private.data = {
+local data, dataByID = {}, {
 	-- Alchemy
 	[60893] = { -- Northrend Alchemy Research
 		[53895] = false, -- Crazy Alchemist's Potion
@@ -114,7 +114,7 @@ private.data = {
 		[124449] = "MONK", -- Guard
 		[112468] = "MONK", -- Spirit Roll
 		[124451] = "MONK", -- Zen Meditation
-		[67036] = "PALADIN", -- Burden of Guilt
+		[57036] = "PALADIN", -- Burden of Guilt
 		[57022] = "PALADIN", -- Divine Protection
 		[57200] = "PRIEST", -- Dispel Magic
 		[127625] = "PRIEST", -- Lightwell
@@ -359,8 +359,65 @@ private.data = {
 		[162884] = "WARRIOR", -- Flawless Defense
 	},
 }
-private.fallbacks = {
+local fallbacks, fallbacksByID = {}, {
 	-- Warbinder's Ink research can discover any lower-level research glyphs
 	-- once all of its own glyphs have been discovered.
 	[167950] = {165564,165304,165456,165460,165461,165463,165464,165465,165466,165467},
 }
+function private.GetData()
+	if dataByID then
+		for researchID, teaches in pairs(dataByID) do
+			local researchName = GetSpellInfo(researchID)
+			if researchName then
+				data[researchName] = {}
+				for skillID, class in pairs(teaches) do
+					local skillName = GetSpellInfo(skillID)
+					if skillName then
+						data[researchName][skillName] = (class and "|c"..(CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class].colorStr or "|cffffffff") .. skillName .. "|r"
+						teaches[skillID] = nil
+					end
+				end
+				if not next(teaches) then
+					dataByID[researchID] = nil
+				end
+			end
+		end
+		if not next(dataByID) then
+			dataByID = nil
+		end
+	end
+
+	if fallbacksByID then
+		print("Scanning fallbacks by ID")
+		for masterID, others in pairs(fallbacksByID) do
+			local masterName = GetSpellInfo(masterID)
+			print("    Scanning master", masterID, masterName)
+			if masterName then
+				fallbacks[masterName] = fallbacks[masterName] or {}
+				for i, researchID in pairs(others) do
+					local researchName = GetSpellInfo(researchID)
+					print("        Scanning slave", researchID, researchName)
+					if researchName and data[researchName] then
+						for spellName, coloredName in pairs(data[researchName]) do
+							fallbacks[masterName][spellName] = coloredName
+						end
+					end
+					if not (dataByID and dataByID[researchID]) then
+						print("        Done with slave")
+						others[i] = nil
+					end
+				end
+				if not next(others) then
+					print("    Done with master")
+					fallbacksByID[masterID] = nil
+				end
+			end
+		end
+		if not next(fallbacksByID) then
+			print("Done with fallbacks by ID")
+			fallbacksByID = nil
+		end
+	end
+
+	return data, fallbacks
+end
